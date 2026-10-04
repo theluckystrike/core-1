@@ -1,5 +1,5 @@
 import { fabricationNoteRectProps } from "@tscircuit/props"
-import { applyToPoint } from "transformation-matrix"
+import { decomposeTSR } from "transformation-matrix"
 import { PrimitiveComponent } from "../base-components/PrimitiveComponent"
 
 export class FabricationNoteRect extends PrimitiveComponent<
@@ -13,6 +13,23 @@ export class FabricationNoteRect extends PrimitiveComponent<
       componentName: "FabricationNoteRect",
       zodProps: fabricationNoteRectProps,
     }
+  }
+
+  /**
+   * Check if the component is rotated 90 or 270 degrees based on global transform.
+   * For these rotations, we need to swap width/height instead of using ccw_rotation.
+   */
+  private _isRotated90Degrees(): boolean {
+    const globalTransform = this._computePcbGlobalTransformBeforeLayout()
+    const decomposedTransform = decomposeTSR(globalTransform)
+    const rotationDegrees = (decomposedTransform.rotation.angle * 180) / Math.PI
+    const normalizedRotationDegrees = ((rotationDegrees % 360) + 360) % 360
+    const rotationTolerance = 0.01
+
+    return (
+      Math.abs(normalizedRotationDegrees - 90) < rotationTolerance ||
+      Math.abs(normalizedRotationDegrees - 270) < rotationTolerance
+    )
   }
 
   doInitialPcbPrimitiveRender(): void {
@@ -39,6 +56,10 @@ export class FabricationNoteRect extends PrimitiveComponent<
       props.hasStroke ??
       (props.strokeWidth !== undefined && props.strokeWidth !== null)
 
+    const isRotated90Degrees = this._isRotated90Degrees()
+    const finalWidth = isRotated90Degrees ? props.height : props.width
+    const finalHeight = isRotated90Degrees ? props.width : props.height
+
     const fabrication_note_rect = db.pcb_fabrication_note_rect.insert({
       pcb_component_id,
       layer,
@@ -48,8 +69,8 @@ export class FabricationNoteRect extends PrimitiveComponent<
         x: position.x,
         y: position.y,
       },
-      width: props.width,
-      height: props.height,
+      width: finalWidth,
+      height: finalHeight,
       stroke_width: props.strokeWidth ?? 1,
       is_filled: props.isFilled ?? false,
       has_stroke: hasStroke,
@@ -65,6 +86,9 @@ export class FabricationNoteRect extends PrimitiveComponent<
 
   getPcbSize(): { width: number; height: number } {
     const { _parsedProps: props } = this
+    if (this._isRotated90Degrees()) {
+      return { width: props.height, height: props.width }
+    }
     return { width: props.width, height: props.height }
   }
 
