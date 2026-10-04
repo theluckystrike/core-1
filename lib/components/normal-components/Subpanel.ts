@@ -134,6 +134,27 @@ export class Subpanel extends Group<typeof subpanelProps> {
     return this.children.filter((c) => c instanceof Board) as Board[]
   }
 
+  /**
+   * Resolve per-side edge padding, falling back to edgePadding (default 5mm)
+   */
+  _getResolvedEdgePadding() {
+    const {
+      edgePadding: edgePaddingProp,
+      edgePaddingLeft: edgePaddingLeftProp,
+      edgePaddingRight: edgePaddingRightProp,
+      edgePaddingTop: edgePaddingTopProp,
+      edgePaddingBottom: edgePaddingBottomProp,
+    } = this._parsedProps
+
+    const edgePadding = distance.parse(edgePaddingProp ?? 5)
+    return {
+      edgePaddingLeft: distance.parse(edgePaddingLeftProp ?? edgePadding),
+      edgePaddingRight: distance.parse(edgePaddingRightProp ?? edgePadding),
+      edgePaddingTop: distance.parse(edgePaddingTopProp ?? edgePadding),
+      edgePaddingBottom: distance.parse(edgePaddingBottomProp ?? edgePadding),
+    }
+  }
+
   doInitialPanelBoardLayout() {
     if (this.root?.pcbDisabled) return
 
@@ -188,22 +209,11 @@ export class Subpanel extends Group<typeof subpanelProps> {
     if (!hasExplicitRowOrCol && hasExplicitWidth && hasExplicitHeight) {
       // Calculate edge padding to determine available space for boards
       const {
-        edgePadding: edgePaddingProp,
-        edgePaddingLeft: edgePaddingLeftProp,
-        edgePaddingRight: edgePaddingRightProp,
-        edgePaddingTop: edgePaddingTopProp,
-        edgePaddingBottom: edgePaddingBottomProp,
-      } = this._parsedProps
-
-      const edgePadding = distance.parse(edgePaddingProp ?? 5)
-      const edgePaddingLeft = distance.parse(edgePaddingLeftProp ?? edgePadding)
-      const edgePaddingRight = distance.parse(
-        edgePaddingRightProp ?? edgePadding,
-      )
-      const edgePaddingTop = distance.parse(edgePaddingTopProp ?? edgePadding)
-      const edgePaddingBottom = distance.parse(
-        edgePaddingBottomProp ?? edgePadding,
-      )
+        edgePaddingLeft,
+        edgePaddingRight,
+        edgePaddingTop,
+        edgePaddingBottom,
+      } = this._getResolvedEdgePadding()
 
       const panelWidth = distance.parse(this._parsedProps.width!)
       const panelHeight = distance.parse(this._parsedProps.height!)
@@ -227,9 +237,24 @@ export class Subpanel extends Group<typeof subpanelProps> {
     this._cachedGridWidth = gridWidth
     this._cachedGridHeight = gridHeight
 
+    // The grid is packed centered on the panel origin, but the panel extends
+    // by edgePaddingLeft/Right and edgePaddingTop/Bottom around it, so shift
+    // the grid to keep uneven padding on the requested sides
+    const {
+      edgePaddingLeft,
+      edgePaddingRight,
+      edgePaddingTop,
+      edgePaddingBottom,
+    } = this._getResolvedEdgePadding()
+    const gridOffsetX = (edgePaddingLeft - edgePaddingRight) / 2
+    const gridOffsetY = (edgePaddingBottom - edgePaddingTop) / 2
+
     // Set panel position offset on each item (board or subpanel)
     for (const { item, pos } of positions) {
-      item._panelPositionOffset = pos
+      item._panelPositionOffset = {
+        x: pos.x + gridOffsetX,
+        y: pos.y + gridOffsetY,
+      }
     }
   }
 
@@ -301,22 +326,11 @@ export class Subpanel extends Group<typeof subpanelProps> {
       })
     } else if (gridWidth > 0 || gridHeight > 0) {
       const {
-        edgePadding: edgePaddingProp,
-        edgePaddingLeft: edgePaddingLeftProp,
-        edgePaddingRight: edgePaddingRightProp,
-        edgePaddingTop: edgePaddingTopProp,
-        edgePaddingBottom: edgePaddingBottomProp,
-      } = this._parsedProps
-
-      const edgePadding = distance.parse(edgePaddingProp ?? 5)
-      const edgePaddingLeft = distance.parse(edgePaddingLeftProp ?? edgePadding)
-      const edgePaddingRight = distance.parse(
-        edgePaddingRightProp ?? edgePadding,
-      )
-      const edgePaddingTop = distance.parse(edgePaddingTopProp ?? edgePadding)
-      const edgePaddingBottom = distance.parse(
-        edgePaddingBottomProp ?? edgePadding,
-      )
+        edgePaddingLeft,
+        edgePaddingRight,
+        edgePaddingTop,
+        edgePaddingBottom,
+      } = this._getResolvedEdgePadding()
 
       db.pcb_group.update(this.pcb_group_id, {
         width: hasExplicitWidth

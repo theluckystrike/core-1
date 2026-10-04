@@ -69,22 +69,11 @@ export class Panel extends Subpanel {
       })
     } else if (gridWidth > 0 || gridHeight > 0) {
       const {
-        edgePadding: edgePaddingProp,
-        edgePaddingLeft: edgePaddingLeftProp,
-        edgePaddingRight: edgePaddingRightProp,
-        edgePaddingTop: edgePaddingTopProp,
-        edgePaddingBottom: edgePaddingBottomProp,
-      } = this._parsedProps
-
-      const edgePadding = distance.parse(edgePaddingProp ?? 5)
-      const edgePaddingLeft = distance.parse(edgePaddingLeftProp ?? edgePadding)
-      const edgePaddingRight = distance.parse(
-        edgePaddingRightProp ?? edgePadding,
-      )
-      const edgePaddingTop = distance.parse(edgePaddingTopProp ?? edgePadding)
-      const edgePaddingBottom = distance.parse(
-        edgePaddingBottomProp ?? edgePadding,
-      )
+        edgePaddingLeft,
+        edgePaddingRight,
+        edgePaddingTop,
+        edgePaddingBottom,
+      } = this._getResolvedEdgePadding()
 
       db.pcb_panel.update(this.pcb_panel_id, {
         width: hasExplicitWidth
